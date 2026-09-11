@@ -1,0 +1,17 @@
+{
+  "name": "kokkelimonke",
+  "version": "1.0.0",
+  "description": "A bluffing party trivia game — find the truth, fool your friends.",
+  "main": "server/index.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js"
+  },
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.19.2",
+    "socket.io": "^4.7.5",
+    "qrcode": "^1.5.3"
+  }
+}

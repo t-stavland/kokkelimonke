@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Kokkelimonke — Host</title>
+  <link rel="stylesheet" href="/shared.css" />
+</head>
+<body>
+  <div class="wrap wide">
+    <h1 class="title">❓ Kokkelimonke</h1>
+
+    <div id="screen-create" class="card center">
+      <p class="subtitle">Bluff your friends. Find the truth.</p>
+      <button id="btn-create">Start a New Room</button>
+      <p class="error-text" id="create-error"></p>
+    </div>
+
+    <div id="screen-lobby" class="card hidden">
+      <div class="center">
+        <p class="pill">Room Code</p>
+        <div class="room-code" id="lobby-code">----</div>
+        <div class="qr-box"><img id="lobby-qr" alt="QR code to join" /></div>
+        <p class="subtitle" style="margin-bottom:0">Scan to join, or go to this site's <strong>/play</strong> page and enter the code.</p>
+      </div>
+      <h3 style="margin-top:24px">Players (<span id="lobby-count">0</span>)</h3>
+      <ul class="player-list" id="lobby-players"></ul>
+      <p class="progress-line" id="lobby-hint"></p>
+      <div class="row center" style="margin-top:16px">
+        <button id="btn-start" disabled>Start Game</button>
+      </div>
+      <p class="error-text" id="lobby-error"></p>
+    </div>
+
+    <div id="screen-round" class="card hidden">
+      <div class="row between">
+        <span class="pill" id="round-label">Round 1 / 8</span>
+        <span class="pill" id="phase-label">Writing</span>
+      </div>
+      <div class="question-box">
+        <p class="pill category" id="round-category">category</p>
+        <p class="question-text" id="round-question">Question?</p>
+      </div>
+      <div class="timer-bar"><div class="timer-bar-fill" id="timer-fill"></div></div>
+      <p class="progress-line" id="round-progress">0 of 0 answered</p>
+      <div class="row center" style="margin-top:18px">
+        <button class="secondary" id="btn-skip">Skip Timer</button>
+        <button class="secondary" id="btn-extend">+15s</button>
+        <button class="danger" id="btn-end-from-round">End Game</button>
+      </div>
+    </div>
+
+    <div id="screen-reveal" class="card hidden">
+      <div class="row between">
+        <span class="pill" id="reveal-round-label">Round 1 / 8</span>
+        <span class="pill">Reveal</span>
+      </div>
+      <div class="question-box">
+        <p class="question-text" id="reveal-question">Question?</p>
+      </div>
+      <div id="reveal-list"></div>
+      <div class="row center" style="margin-top:10px">
+        <button id="btn-reveal-next">Reveal Next</button>
+        <button id="btn-to-scoreboard" class="hidden">Continue to Scoreboard</button>
+      </div>
+    </div>
+
+    <div id="screen-scoreboard" class="card hidden">
+      <h2 class="center">Scoreboard</h2>
+      <ul class="player-list" id="scoreboard-players"></ul>
+      <div class="row center" style="margin-top:16px">
+        <button id="btn-next-round">Next Round</button>
+      </div>
+    </div>
+
+    <div id="screen-final" class="card hidden">
+      <div class="trophy">🏆</div>
+      <h2 class="center" id="final-winner">Winner!</h2>
+      <ul class="player-list" id="final-players"></ul>
+      <div class="row center" style="margin-top:16px">
+        <button id="btn-new-game">New Game (Same Room)</button>
+      </div>
+    </div>
+
+    <footer class="hint">Host screen — keep this on the TV or laptop everyone can see.</footer>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/host/host.js"></script>
+</body>
+</html>
