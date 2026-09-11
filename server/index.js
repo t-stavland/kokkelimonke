@@ -56,6 +56,13 @@ io.on('connection', (socket) => {
     ack?.({ ok: true });
   });
 
+  socket.on('host:skipQuestion', (payload, ack) => {
+    const { error } = roomManager.skipQuestion(payload?.code);
+    if (error) return ack?.({ ok: false, error });
+    persist();
+    ack?.({ ok: true });
+  });
+
   socket.on('host:extendTimer', (payload, ack) => {
     roomManager.extendTimer(payload?.code, payload?.seconds);
     persist();

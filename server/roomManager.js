@@ -385,6 +385,27 @@ class RoomManager {
     return { room };
   }
 
+  skipQuestion(code) {
+    const room = this.getRoom(code);
+    if (!room) return { error: 'Room not found.' };
+    if (room.phase !== 'writing' && room.phase !== 'voting') {
+      return { error: 'Can only skip during writing or voting.' };
+    }
+    this.clearTimer(room);
+    room.currentQuestion = this.pickQuestion(room);
+    room.submissions = {};
+    room.missed = {};
+    room.answerList = [];
+    room.votes = {};
+    room.revealStep = 0;
+    room.lastRoundResults = null;
+    room.phase = 'writing';
+    room.phaseEndsAt = Date.now() + config.writingSeconds * 1000;
+    this.setTimer(room, config.writingSeconds * 1000, () => this.lockAnswers(room.code));
+    this.broadcast(room);
+    return { room };
+  }
+
   extendTimer(code, seconds) {
     const room = this.getRoom(code);
     if (!room || !room.phaseEndsAt) return { error: 'No active timer.' };

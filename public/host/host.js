@@ -42,6 +42,7 @@
   });
 
   document.getElementById('btn-skip').addEventListener('click', () => ack('host:skipTimer'));
+  document.getElementById('btn-skip-question').addEventListener('click', () => ack('host:skipQuestion'));
   document.getElementById('btn-extend').addEventListener('click', () => ack('host:extendTimer', { seconds: 15 }));
   const endGameBtn = document.getElementById('btn-end-from-round');
   let endGameArmed = false;

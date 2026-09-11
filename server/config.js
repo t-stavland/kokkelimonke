@@ -3,7 +3,7 @@ module.exports = {
   rounds: 8,
   writingSeconds: 45,
   votingSeconds: 30,
-  minPlayers: 1, // set back to 3 for real game nights — the bluffing mechanic needs at least 2 fakes + the truth to work
+  minPlayers: 3,
   recommendedPlayers: 4,
   points: {
     correctGuess: 1000,
