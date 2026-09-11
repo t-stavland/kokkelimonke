@@ -62,7 +62,6 @@ class RoomManager {
       missed: {},
       answerList: [],
       votes: {},
-      phaseEndsAt: null,
       revealStep: 0,
       lastRoundResults: null,
       gameStarted: false,
@@ -188,7 +187,6 @@ class RoomManager {
     room.round += 1;
     if (room.round > room.totalRounds) {
       room.phase = 'final';
-      room.phaseEndsAt = null;
       this.broadcast(room);
       return;
     }
@@ -201,9 +199,7 @@ class RoomManager {
     room.revealStep = 0;
     room.lastRoundResults = null;
     room.phase = 'writing';
-    room.phaseEndsAt = Date.now() + config.writingSeconds * 1000;
 
-    this.setTimer(room, config.writingSeconds * 1000, () => this.lockAnswers(room.code));
     this.broadcast(room);
   }
 
@@ -254,8 +250,6 @@ class RoomManager {
 
     room.answerList = shuffle(entries);
     room.phase = 'voting';
-    room.phaseEndsAt = Date.now() + config.votingSeconds * 1000;
-    this.setTimer(room, config.votingSeconds * 1000, () => this.lockVotes(code));
     this.broadcast(room);
   }
 
@@ -286,7 +280,6 @@ class RoomManager {
     room.lastRoundResults = this.computeRoundResults(room);
     room.phase = 'reveal';
     room.revealStep = 0;
-    room.phaseEndsAt = null;
     this.broadcast(room);
     this.scheduleRevealStep(code);
   }
@@ -382,7 +375,6 @@ class RoomManager {
     if (!this.isHost(room, playerId)) return { error: 'Only the host can end the game.' };
     this.clearTimer(room);
     room.phase = 'final';
-    room.phaseEndsAt = null;
     this.broadcast(room);
     return { room };
   }
@@ -402,7 +394,6 @@ class RoomManager {
     room.missed = {};
     room.answerList = [];
     room.votes = {};
-    room.phaseEndsAt = null;
     room.revealStep = 0;
     room.lastRoundResults = null;
     for (const p of Object.values(room.players)) {
@@ -452,7 +443,6 @@ class RoomManager {
       isHost: this.isHost(room, playerId),
       queued: player.queued,
       currentQuestion: room.currentQuestion,
-      phaseEndsAt: room.phaseEndsAt,
       minPlayers: config.minPlayers,
       recommendedPlayers: config.recommendedPlayers,
       players: this.rankedPlayers(room),
@@ -461,6 +451,8 @@ class RoomManager {
 
     if (room.phase === 'writing') {
       view.yourAnswer = room.submissions[playerId] || null;
+      view.answeredCount = Object.keys(room.submissions).length;
+      view.totalActive = this.activePlayers(room).length;
     }
     if (room.phase === 'voting') {
       view.options = room.answerList.map((e) => ({
@@ -469,6 +461,8 @@ class RoomManager {
         isYours: e.ownerId === playerId,
       }));
       view.yourVote = room.votes[playerId] || null;
+      view.votedCount = Object.keys(room.votes).length;
+      view.totalActive = this.activePlayers(room).length;
     }
     if (room.phase === 'reveal') {
       const results = room.lastRoundResults;

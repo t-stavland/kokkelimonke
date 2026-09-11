@@ -15,7 +15,6 @@
 
   let code = null;
   let playerId = null;
-  let timerHandle = null;
   let submittedThisRound = false;
   let votedThisRound = false;
   let lastPhase = null;
@@ -220,7 +219,7 @@
     showScreen('writing');
     document.getElementById('write-category').textContent = state.currentQuestion.category;
     document.getElementById('write-question').textContent = state.currentQuestion.question;
-    startTimer('write-timer-fill', state.phaseEndsAt, 45);
+    document.getElementById('write-progress').textContent = `${state.answeredCount} of ${state.totalActive} answered`;
 
     const alreadyIn = !!state.yourAnswer || submittedThisRound;
     document.getElementById('write-form').classList.toggle('hidden', alreadyIn);
@@ -250,7 +249,7 @@
   function renderVoting(state) {
     showScreen('voting');
     document.getElementById('vote-question').textContent = state.currentQuestion.question;
-    startTimer('vote-timer-fill', state.phaseEndsAt, 30);
+    document.getElementById('vote-progress').textContent = `${state.votedCount} of ${state.totalActive} voted`;
 
     const votedAlready = !!state.yourVote || votedThisRound;
     const container = document.getElementById('vote-options');
@@ -293,7 +292,6 @@
     } else {
       pointsEl.textContent = `+${state.pointsThisRound} points this round`;
     }
-    stopTimer();
   }
 
   function buildRevealEntry(entry) {
@@ -317,7 +315,6 @@
       li.innerHTML = `<span><span class="rank-num">#${i + 1}</span><span class="name">${escapeHtml(p.name)}</span></span><span class="score">${p.score}</span>`;
       list.appendChild(li);
     });
-    stopTimer();
   }
 
   function renderFinal(state) {
@@ -333,25 +330,6 @@
       list.appendChild(li);
     });
     document.getElementById('btn-play-again').classList.toggle('hidden', !state.isHost);
-    stopTimer();
-  }
-
-  function startTimer(elId, endsAt, totalSeconds) {
-    stopTimer();
-    const fill = document.getElementById(elId);
-    function tick() {
-      const remainingMs = endsAt - Date.now();
-      const ratio = Math.max(0, Math.min(1, remainingMs / (totalSeconds * 1000)));
-      fill.style.width = `${ratio * 100}%`;
-      fill.classList.toggle('low', ratio < 0.25);
-    }
-    tick();
-    timerHandle = setInterval(tick, 250);
-  }
-
-  function stopTimer() {
-    if (timerHandle) clearInterval(timerHandle);
-    timerHandle = null;
   }
 
   function escapeHtml(str) {
