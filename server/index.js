@@ -30,74 +30,11 @@ function persist() {
 }
 
 io.on('connection', (socket) => {
-  socket.on('host:createRoom', (payload, ack) => {
-    const room = roomManager.createRoom();
-    roomManager.attachHost(room.code, socket.id);
-    persist();
-    ack?.({ ok: true, code: room.code, state: roomManager.hostView(room) });
-  });
-
-  socket.on('host:attach', (payload, ack) => {
-    const { room, error } = roomManager.attachHost(payload?.code, socket.id);
-    if (error) return ack?.({ ok: false, error });
-    ack?.({ ok: true, code: room.code, state: roomManager.hostView(room) });
-  });
-
-  socket.on('host:startGame', (payload, ack) => {
-    const { room, error } = roomManager.startGame(payload?.code);
+  socket.on('player:hostNewGame', (payload, ack) => {
+    const { room, player, error } = roomManager.hostNewGame(payload?.name, socket.id);
     if (error) return ack?.({ ok: false, error });
     persist();
-    ack?.({ ok: true });
-  });
-
-  socket.on('host:skipTimer', (payload, ack) => {
-    roomManager.skipTimer(payload?.code);
-    persist();
-    ack?.({ ok: true });
-  });
-
-  socket.on('host:skipQuestion', (payload, ack) => {
-    const { error } = roomManager.skipQuestion(payload?.code);
-    if (error) return ack?.({ ok: false, error });
-    persist();
-    ack?.({ ok: true });
-  });
-
-  socket.on('host:extendTimer', (payload, ack) => {
-    roomManager.extendTimer(payload?.code, payload?.seconds);
-    persist();
-    ack?.({ ok: true });
-  });
-
-  socket.on('host:advanceReveal', (payload, ack) => {
-    roomManager.advanceReveal(payload?.code);
-    persist();
-    ack?.({ ok: true });
-  });
-
-  socket.on('host:goToScoreboard', (payload, ack) => {
-    roomManager.goToScoreboard(payload?.code);
-    persist();
-    ack?.({ ok: true });
-  });
-
-  socket.on('host:nextRound', (payload, ack) => {
-    const { error } = roomManager.nextRound(payload?.code);
-    if (error) return ack?.({ ok: false, error });
-    persist();
-    ack?.({ ok: true });
-  });
-
-  socket.on('host:endGame', (payload, ack) => {
-    roomManager.endGame(payload?.code);
-    persist();
-    ack?.({ ok: true });
-  });
-
-  socket.on('host:newGame', (payload, ack) => {
-    roomManager.newGameFromLobby(payload?.code);
-    persist();
-    ack?.({ ok: true });
+    ack?.({ ok: true, code: room.code, playerId: player.id, state: roomManager.playerView(room, player.id) });
   });
 
   socket.on('player:join', (payload, ack) => {
@@ -112,6 +49,13 @@ io.on('connection', (socket) => {
     ack?.({ ok: true, playerId: player.id, resumed, state: roomManager.playerView(room, player.id) });
   });
 
+  socket.on('player:startGame', (payload, ack) => {
+    const { error } = roomManager.startGame(payload?.code, payload?.playerId);
+    if (error) return ack?.({ ok: false, error });
+    persist();
+    ack?.({ ok: true });
+  });
+
   socket.on('player:submitAnswer', (payload, ack) => {
     const { error } = roomManager.submitAnswer(payload?.code, payload?.playerId, payload?.text);
     if (error) return ack?.({ ok: false, error });
@@ -121,6 +65,20 @@ io.on('connection', (socket) => {
 
   socket.on('player:vote', (payload, ack) => {
     const { error } = roomManager.vote(payload?.code, payload?.playerId, payload?.entryId);
+    if (error) return ack?.({ ok: false, error });
+    persist();
+    ack?.({ ok: true });
+  });
+
+  socket.on('player:endGame', (payload, ack) => {
+    const { error } = roomManager.endGame(payload?.code, payload?.playerId);
+    if (error) return ack?.({ ok: false, error });
+    persist();
+    ack?.({ ok: true });
+  });
+
+  socket.on('player:newGame', (payload, ack) => {
+    const { error } = roomManager.newGameFromLobby(payload?.code, payload?.playerId);
     if (error) return ack?.({ ok: false, error });
     persist();
     ack?.({ ok: true });
@@ -138,6 +96,5 @@ io.on('connection', (socket) => {
 
 server.listen(config.port, () => {
   console.log(`Kokkelimonke running at http://localhost:${config.port}`);
-  console.log(`  Host screen: http://localhost:${config.port}/host`);
-  console.log(`  Player join: http://localhost:${config.port}/play`);
+  console.log(`  Open http://localhost:${config.port} on any phone`);
 });

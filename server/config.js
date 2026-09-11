@@ -3,6 +3,8 @@ module.exports = {
   rounds: 8,
   writingSeconds: 45,
   votingSeconds: 30,
+  revealStepSeconds: 3, // how long each answer stays on screen during the auto-playing reveal
+  scoreboardSeconds: 8, // how long the scoreboard shows before auto-advancing to the next round
   minPlayers: 3,
   recommendedPlayers: 4,
   points: {

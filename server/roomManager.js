@@ -32,7 +32,6 @@ class RoomManager {
     this.io = io;
     this.rooms = {}; // code -> room state
     this.socketToPlayer = {}; // socketId -> { code, playerId }
-    this.hostSockets = {}; // code -> socketId
 
     for (const [code, room] of Object.entries(persistedRooms || {})) {
       room.timer = null;
@@ -52,13 +51,13 @@ class RoomManager {
     const room = {
       code,
       createdAt: Date.now(),
+      hostPlayerId: null,
       phase: 'lobby',
       round: 0,
       totalRounds: config.rounds,
       usedQuestions: [],
       currentQuestion: null,
       players: {},
-      queue: [],
       submissions: {},
       missed: {},
       answerList: [],
@@ -77,14 +76,22 @@ class RoomManager {
     return this.rooms[(code || '').toUpperCase()];
   }
 
-  attachHost(code, socketId) {
-    const room = this.getRoom(code);
-    if (!room) return { error: 'Room not found.' };
-    this.hostSockets[code] = socketId;
-    return { room };
+  isHost(room, playerId) {
+    return !!playerId && room.hostPlayerId === playerId;
   }
 
   // ---------- players ----------
+
+  hostNewGame(name, socketId) {
+    const room = this.createRoom();
+    const { player, error } = this.joinPlayer(room.code, { name }, socketId);
+    if (error) {
+      delete this.rooms[room.code];
+      return { error };
+    }
+    room.hostPlayerId = player.id;
+    return { room, player };
+  }
 
   joinPlayer(code, { name, playerId }, socketId) {
     const room = this.getRoom(code);
@@ -123,20 +130,12 @@ class RoomManager {
       joinedAt: Date.now(),
     };
 
-    if (inLobby) {
-      room.players[newPlayer.id] = newPlayer;
-    } else {
-      room.players[newPlayer.id] = newPlayer; // stored, but flagged queued so it's excluded from active-round logic
-    }
-
+    room.players[newPlayer.id] = newPlayer; // queued flag excludes late joiners from the active round
     this.socketToPlayer[socketId] = { code, playerId: newPlayer.id };
     return { room, player: newPlayer, resumed: false };
   }
 
   disconnectSocket(socketId) {
-    for (const [code, hostSocketId] of Object.entries(this.hostSockets)) {
-      if (hostSocketId === socketId) delete this.hostSockets[code];
-    }
     const mapping = this.socketToPlayer[socketId];
     if (!mapping) return null;
     delete this.socketToPlayer[socketId];
@@ -153,9 +152,10 @@ class RoomManager {
 
   // ---------- game flow ----------
 
-  startGame(code) {
+  startGame(code, playerId) {
     const room = this.getRoom(code);
     if (!room) return { error: 'Room not found.' };
+    if (!this.isHost(room, playerId)) return { error: 'Only the host can start the game.' };
     const active = this.activePlayers(room);
     if (active.length < config.minPlayers) {
       return { error: `Need at least ${config.minPlayers} players to start.` };
@@ -288,6 +288,7 @@ class RoomManager {
     room.revealStep = 0;
     room.phaseEndsAt = null;
     this.broadcast(room);
+    this.scheduleRevealStep(code);
   }
 
   computeRoundResults(room) {
@@ -351,79 +352,34 @@ class RoomManager {
     return { entries: entriesResult, perPlayerRoundPoints, realEntryId: realEntry?.entryId };
   }
 
-  advanceReveal(code) {
+  // The reveal, scoreboard, and next-round transitions all play out on their own —
+  // there's no shared host screen to click through them, so the server paces the show.
+  scheduleRevealStep(code) {
     const room = this.getRoom(code);
-    if (!room || room.phase !== 'reveal') return { error: 'Not in reveal phase.' };
-    if (room.revealStep < room.lastRoundResults.entries.length) {
-      room.revealStep += 1;
-      this.broadcast(room);
-    }
-    return { room };
+    if (!room) return;
+    this.setTimer(room, config.revealStepSeconds * 1000, () => {
+      const r = this.getRoom(code);
+      if (!r || r.phase !== 'reveal') return;
+      if (r.revealStep < r.lastRoundResults.entries.length) {
+        r.revealStep += 1;
+        this.broadcast(r);
+        this.scheduleRevealStep(code);
+      } else {
+        r.phase = 'scoreboard';
+        this.broadcast(r);
+        this.setTimer(r, config.scoreboardSeconds * 1000, () => {
+          const r2 = this.getRoom(code);
+          if (!r2 || r2.phase !== 'scoreboard') return;
+          this.advanceToNextRound(r2);
+        });
+      }
+    });
   }
 
-  goToScoreboard(code) {
-    const room = this.getRoom(code);
-    if (!room || room.phase !== 'reveal') return { error: 'Not in reveal phase.' };
-    room.phase = 'scoreboard';
-    this.broadcast(room);
-    return { room };
-  }
-
-  nextRound(code) {
+  endGame(code, playerId) {
     const room = this.getRoom(code);
     if (!room) return { error: 'Room not found.' };
-    if (room.phase !== 'scoreboard') return { error: 'Finish this round first.' };
-    this.advanceToNextRound(room);
-    return { room };
-  }
-
-  skipTimer(code) {
-    const room = this.getRoom(code);
-    if (!room) return { error: 'Room not found.' };
-    if (room.phase === 'writing') this.lockAnswers(code);
-    else if (room.phase === 'voting') this.lockVotes(code);
-    return { room };
-  }
-
-  skipQuestion(code) {
-    const room = this.getRoom(code);
-    if (!room) return { error: 'Room not found.' };
-    if (room.phase !== 'writing' && room.phase !== 'voting') {
-      return { error: 'Can only skip during writing or voting.' };
-    }
-    this.clearTimer(room);
-    room.currentQuestion = this.pickQuestion(room);
-    room.submissions = {};
-    room.missed = {};
-    room.answerList = [];
-    room.votes = {};
-    room.revealStep = 0;
-    room.lastRoundResults = null;
-    room.phase = 'writing';
-    room.phaseEndsAt = Date.now() + config.writingSeconds * 1000;
-    this.setTimer(room, config.writingSeconds * 1000, () => this.lockAnswers(room.code));
-    this.broadcast(room);
-    return { room };
-  }
-
-  extendTimer(code, seconds) {
-    const room = this.getRoom(code);
-    if (!room || !room.phaseEndsAt) return { error: 'No active timer.' };
-    const extra = Math.max(0, Math.min(120, Number(seconds) || 0));
-    room.phaseEndsAt += extra * 1000;
-    this.clearTimer(room);
-    const remaining = room.phaseEndsAt - Date.now();
-    const cb = room.phase === 'writing'
-      ? () => this.lockAnswers(code)
-      : () => this.lockVotes(code);
-    this.setTimer(room, Math.max(0, remaining), cb);
-    this.broadcast(room);
-    return { room };
-  }
-
-  endGame(code) {
-    const room = this.getRoom(code);
-    if (!room) return { error: 'Room not found.' };
+    if (!this.isHost(room, playerId)) return { error: 'Only the host can end the game.' };
     this.clearTimer(room);
     room.phase = 'final';
     room.phaseEndsAt = null;
@@ -431,10 +387,11 @@ class RoomManager {
     return { room };
   }
 
-  newGameFromLobby(code) {
-    // Reset scores/rounds but keep the room + players so the same TV/group can play again.
+  newGameFromLobby(code, playerId) {
+    // Reset scores/rounds but keep the room + players so the same group can play again.
     const room = this.getRoom(code);
     if (!room) return { error: 'Room not found.' };
+    if (!this.isHost(room, playerId)) return { error: 'Only the host can start a new game.' };
     this.clearTimer(room);
     room.phase = 'lobby';
     room.round = 0;
@@ -483,37 +440,6 @@ class RoomManager {
       .map(publicPlayer);
   }
 
-  hostView(room) {
-    const activeCount = this.activePlayers(room).length;
-    const view = {
-      code: room.code,
-      phase: room.phase,
-      round: room.round,
-      totalRounds: room.totalRounds,
-      players: this.rankedPlayers(room),
-      queuedCount: Object.values(room.players).filter((p) => p.queued).length,
-      minPlayers: config.minPlayers,
-      recommendedPlayers: config.recommendedPlayers,
-      phaseEndsAt: room.phaseEndsAt,
-      currentQuestion: room.currentQuestion,
-    };
-    if (room.phase === 'writing') {
-      view.answeredCount = Object.keys(room.submissions).length;
-      view.totalActive = activeCount;
-    }
-    if (room.phase === 'voting') {
-      view.votedCount = Object.keys(room.votes).length;
-      view.totalActive = activeCount;
-    }
-    if (room.phase === 'reveal') {
-      view.answerList = room.lastRoundResults.entries.slice(0, room.revealStep);
-      view.revealStep = room.revealStep;
-      view.revealTotal = room.lastRoundResults.entries.length;
-      view.done = room.revealStep >= room.lastRoundResults.entries.length;
-    }
-    return view;
-  }
-
   playerView(room, playerId) {
     const player = room.players[playerId];
     if (!player) return null;
@@ -523,10 +449,12 @@ class RoomManager {
       round: room.round,
       totalRounds: room.totalRounds,
       you: publicPlayer(player),
+      isHost: this.isHost(room, playerId),
       queued: player.queued,
       currentQuestion: room.currentQuestion,
       phaseEndsAt: room.phaseEndsAt,
       minPlayers: config.minPlayers,
+      recommendedPlayers: config.recommendedPlayers,
       players: this.rankedPlayers(room),
     };
     if (player.queued) return view;
@@ -561,10 +489,6 @@ class RoomManager {
   }
 
   broadcast(room) {
-    const hostSocketId = this.hostSockets[room.code];
-    if (hostSocketId) {
-      this.io.to(hostSocketId).emit('host:state', this.hostView(room));
-    }
     for (const [socketId, mapping] of Object.entries(this.socketToPlayer)) {
       if (mapping.code !== room.code) continue;
       const view = this.playerView(room, mapping.playerId);

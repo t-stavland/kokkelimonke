@@ -7,13 +7,112 @@
   <link rel="stylesheet" href="/shared.css" />
 </head>
 <body>
-  <div class="wrap center">
-    <h1 class="title">❓ Kokkelimonke</h1>
-    <p class="subtitle">A bluffing party game — find the truth, fool your friends.</p>
-    <div class="card">
-      <a class="btn block" href="/host" style="display:block; text-decoration:none; margin-bottom:14px;">Host a Game (TV / laptop)</a>
-      <a class="btn secondary block" href="/play" style="display:block; text-decoration:none;">Join a Game (phone)</a>
+  <div class="wrap">
+    <h1 class="title">🤡 Kokkelimonke</h1>
+
+    <div id="screen-entry" class="card">
+      <p class="subtitle" style="margin-bottom:20px">Bluff your friends. Find the truth.</p>
+      <button class="block" id="btn-show-host">Host a New Game</button>
+      <button class="secondary block" id="btn-show-join" style="margin-top:12px">Join a Game</button>
+
+      <div id="host-form" class="hidden" style="margin-top:20px">
+        <label for="host-name">Your Name</label>
+        <input type="text" id="host-name" placeholder="Your name" maxlength="24" />
+        <button class="block" id="btn-host-create" style="margin-top:14px">Create Room</button>
+      </div>
+
+      <div id="join-form" class="hidden" style="margin-top:20px">
+        <label for="input-code">Room Code</label>
+        <input type="text" id="input-code" placeholder="BLUE-FOX" autocapitalize="characters" />
+        <label for="input-name">Your Name</label>
+        <input type="text" id="input-name" placeholder="Your name" maxlength="24" />
+        <button class="block" id="btn-join" style="margin-top:14px">Join Room</button>
+      </div>
+      <p class="error-text" id="entry-error"></p>
     </div>
+
+    <div id="screen-lobby-host" class="card hidden">
+      <div class="center">
+        <p class="pill">Room Code</p>
+        <div class="room-code" id="lobby-code">----</div>
+        <div class="qr-box"><img id="lobby-qr" alt="QR code to join" /></div>
+        <p class="subtitle" style="margin-bottom:0">Show this code, or let people scan it.</p>
+      </div>
+      <h3 style="margin-top:24px">Players (<span id="lobby-count">0</span>)</h3>
+      <ul class="player-list" id="lobby-players"></ul>
+      <p class="progress-line" id="lobby-hint"></p>
+      <button class="block" id="btn-start" disabled style="margin-top:16px">Start Game</button>
+      <p class="error-text" id="lobby-error"></p>
+      <p class="center" style="margin-top:14px"><a href="#" id="link-leave-lobby-host" style="color:var(--ink-dim); font-size:0.85rem;">Not you? Leave this game</a></p>
+    </div>
+
+    <div id="screen-lobby-wait" class="card hidden waiting">
+      <div class="spinner"></div>
+      <p id="lobby-wait-text">You're in! Waiting for the host to start the game...</p>
+      <p><a href="#" id="link-leave-lobby-wait" style="color:var(--ink-dim); font-size:0.85rem;">Not you? Leave this game</a></p>
+    </div>
+
+    <div id="screen-writing" class="card hidden">
+      <div class="question-box">
+        <p class="pill category" id="write-category">category</p>
+        <p class="question-text" id="write-question">Question?</p>
+      </div>
+      <div class="timer-bar"><div class="timer-bar-fill" id="write-timer-fill"></div></div>
+      <div id="write-form">
+        <label for="write-answer">Your best fake answer:</label>
+        <textarea id="write-answer" maxlength="140" placeholder="Make it believable..."></textarea>
+        <button class="block" id="btn-submit-answer" style="margin-top:14px">Submit</button>
+        <p class="error-text" id="write-error"></p>
+      </div>
+      <div id="write-waiting" class="waiting hidden">
+        <div class="spinner"></div>
+        <p>Answer locked in. Waiting for everyone else...</p>
+      </div>
+    </div>
+
+    <div id="screen-voting" class="card hidden">
+      <div class="question-box">
+        <p class="question-text" id="vote-question">Question?</p>
+      </div>
+      <div class="timer-bar"><div class="timer-bar-fill" id="vote-timer-fill"></div></div>
+      <p class="progress-line">Which one is real?</p>
+      <div id="vote-options"></div>
+      <div id="vote-waiting" class="waiting hidden">
+        <div class="spinner"></div>
+        <p>Vote locked in. Waiting for everyone else...</p>
+      </div>
+      <p class="error-text" id="vote-error"></p>
+    </div>
+
+    <div id="screen-reveal" class="card hidden">
+      <div class="row between">
+        <span class="pill" id="reveal-round-label">Round 1 / 8</span>
+        <span class="pill">Reveal</span>
+      </div>
+      <div class="question-box">
+        <p class="question-text" id="reveal-question">Question?</p>
+      </div>
+      <div id="reveal-list"></div>
+      <p class="progress-line" id="reveal-points"></p>
+    </div>
+
+    <div id="screen-scoreboard" class="card hidden center">
+      <h2>Scoreboard</h2>
+      <ul class="player-list" id="scoreboard-players"></ul>
+      <p class="waiting" style="padding:10px">Next round starting soon...</p>
+    </div>
+
+    <div id="screen-final" class="card hidden center">
+      <div class="trophy" id="final-trophy">🏆</div>
+      <h2 id="final-headline">You won!</h2>
+      <ul class="player-list" id="final-players"></ul>
+      <button class="block hidden" id="btn-play-again" style="margin-top:16px">Play Again (Same Room)</button>
+    </div>
+
+    <footer class="hint">Keep this tab open — your score and progress live here.</footer>
   </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/app.js"></script>
 </body>
 </html>
