@@ -9,6 +9,7 @@ const store = require('./store');
 const { RoomManager } = require('./roomManager');
 
 const app = express();
+app.set('trust proxy', true); // Render terminates TLS at a proxy; without this, req.protocol always reports 'http'
 const server = http.createServer(app);
 const io = new Server(server);
 
