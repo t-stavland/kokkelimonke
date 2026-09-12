@@ -14,11 +14,11 @@ function randomOf(list) {
 
 function generateRoomCode(isTaken) {
   for (let attempt = 0; attempt < 200; attempt++) {
-    const code = `${randomOf(ADJECTIVES)}-${randomOf(NOUNS)}`;
+    const code = `${randomOf(ADJECTIVES)}${randomOf(NOUNS)}`;
     if (!isTaken(code)) return code;
   }
   // Extremely unlikely fallback if the small combo space is exhausted.
-  return `${randomOf(ADJECTIVES)}-${randomOf(NOUNS)}-${Math.floor(Math.random() * 100)}`;
+  return `${randomOf(ADJECTIVES)}${randomOf(NOUNS)}${Math.floor(Math.random() * 100)}`;
 }
 
 module.exports = { generateRoomCode };

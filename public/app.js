@@ -40,7 +40,7 @@
   // ---------- entry screen ----------
 
   const params = new URLSearchParams(location.search);
-  const prefillCode = (params.get('code') || '').toUpperCase();
+  const prefillCode = (params.get('code') || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 
   document.getElementById('btn-show-host').addEventListener('click', () => {
     document.getElementById('host-form').classList.remove('hidden');
@@ -53,7 +53,7 @@
   });
 
   document.getElementById('input-code').addEventListener('input', (e) => {
-    e.target.value = e.target.value.toUpperCase();
+    e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
   });
 
   document.getElementById('btn-host-create').addEventListener('click', () => {
@@ -168,6 +168,11 @@
       submittedThisRound = false;
       votedThisRound = false;
       lastPhase = state.phase;
+      // Clear the answer box only once, on entering a fresh writing phase — not on every
+      // broadcast while others are still answering, which would wipe out what you're typing.
+      if (state.phase === 'writing') {
+        document.getElementById('write-answer').value = '';
+      }
     }
 
     if (state.queued) {
@@ -224,7 +229,6 @@
     const alreadyIn = !!state.yourAnswer || submittedThisRound;
     document.getElementById('write-form').classList.toggle('hidden', alreadyIn);
     document.getElementById('write-waiting').classList.toggle('hidden', !alreadyIn);
-    if (!alreadyIn) document.getElementById('write-answer').value = '';
   }
 
   document.getElementById('btn-submit-answer').addEventListener('click', () => {

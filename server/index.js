@@ -20,7 +20,7 @@ app.get('/qr/:code', async (req, res) => {
   const room = roomManager.getRoom(req.params.code);
   if (!room) return res.status(404).end();
   const host = req.headers.host;
-  const joinUrl = `${req.protocol}://${host}/play?code=${encodeURIComponent(room.code)}`;
+  const joinUrl = `${req.protocol}://${host}/?code=${encodeURIComponent(room.code)}`;
   res.type('png');
   QRCode.toFileStream(res, joinUrl, { width: 320, margin: 1 });
 });

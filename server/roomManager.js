@@ -72,7 +72,7 @@ class RoomManager {
   }
 
   getRoom(code) {
-    return this.rooms[(code || '').toUpperCase()];
+    return this.rooms[(code || '').toUpperCase().replace(/[^A-Z0-9]/g, '')];
   }
 
   isHost(room, playerId) {
